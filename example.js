@@ -202,7 +202,9 @@ function populate(){
 			val: 3
 		},
 	];
-	
+
+
+	$('.input-field').val('');
 	$.each(keys,function(key,value){
 		var target = ".column-" + value.col + ".row-" + value.row;
 		$(target).val(value.val).prop('disabled',true).addClass('pre-number');
