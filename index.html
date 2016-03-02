@@ -1,0 +1,416 @@
+<!DOCTYPE html >
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Suduko Solver</title>
+<link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+
+<link href='https://fonts.googleapis.com/css?family=Lato:400,700' rel='stylesheet' type='text/css'>
+<style>
+#container{
+	max-width: 500px;
+	margin: 0 auto;
+	text-align:center;
+}
+
+h1,h2,h3,h4{
+	font-family: 'Lato', sans-serif;
+	font-weight: 700;
+	text-align: center;
+	padding: 30px 0;
+	margin: 0;	
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus {
+    outline: none;
+}
+
+.suduko-table{
+	margin-top:30px;
+}
+
+.suduko-table td{
+	text-align:center;	
+	padding: 0!important;
+	position:relative;
+}
+.suduko-table input{
+	width: 100%;
+	text-align:center;
+	font-size: 18px;
+	padding: 10px 8px;
+	border:1px solid #fff;
+		
+}
+
+.overlay-matrix{
+	width: 100%;
+	text-align:center;
+	font-size: 18px;
+	border:none;
+	padding: 10px 8px;
+	position:absolute;
+	top:0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	display:none;
+}
+
+.suduko-table input[disabled]{
+	background:#f4f4f4;	
+	border:1px solid #f4f4f4;
+	color: #666;
+}
+
+.suduko-table .column-key,
+.suduko-table .column-key td{
+	border:none;	
+}
+
+
+.suduko-table input.solving{
+	background:#eee;	
+}
+
+.suduko-table input.solved{
+	border:1px solid #5cb85c;	
+}
+
+.suduko-table input.not-solved{
+	border:1px solid #d9534f;	
+}
+
+
+
+	
+</style>
+<script type="text/javascript" src="./example.js"></script>
+<script>
+var required = [1,2,3,4,5,6,7,8,9];
+var speed = 50;
+var matrixMode = true;
+var autoRetry = false;
+var forceRandom = false;
+var lockPrevious = false;
+
+function solveAll(){
+	autoRetry = true;
+	solveNext();
+}
+
+function solveNext(){
+	var found = false;
+	
+	var fields = $('.input-field');
+	
+	
+	
+	var time = 0;
+	
+	var totalChecking = 0;
+	
+	$.each(fields,function(){
+		var $this = $(this);
+		if($this.val() !== ''){
+			$this.prop('disabled',true).addClass('pre-number');
+		}
+	});
+	
+	
+	$.each(fields,function(){
+		var $this = $(this);
+		if($this.val() === ''){
+			totalChecking++;
+			var col = $this.data("column");
+			var row = $this.data("row");
+			var box = $this.data("box");
+			
+			setTimeout(function(){
+				checkField(col,row,box);
+			}, time);
+      		time += speed;
+			
+			//checkField('b','3','1');	
+			//checkField('d','7','8');	
+			//alert("Finished");
+		}
+	});
+	
+	if(matrixMode === true){
+		var matrixCounter = 0;
+		var matrix = setInterval(function(){
+			matrixCounter++;
+			var input = $('.input-field:not(.pre-number,.solving,.solved,.not-solved)');
+			if(input){
+				input.parents('td').find('.overlay-matrix').text(matrixCounter).fadeIn(100);
+			}
+			if(matrixCounter == 9){
+				matrixCounter = 0;	
+			}
+		},30);
+	}
+	
+	
+	setTimeout(function(){
+		fields.removeClass('not-solved');
+		clearInterval(matrix);
+		if(autoRetry === true){
+			if(totalChecking > 0){				
+				solveNext();
+			}
+		}
+	}, (speed * totalChecking));
+	
+	
+	if(totalChecking < 5){
+		forceRandom = true;
+	}
+	
+	if(totalChecking == 0){
+		alert("Complete");	
+		autoRetry = false;
+	}
+	
+	
+}
+
+function checkField(col,row,box){
+	console.log("Trying: " + col + row + " in box " + box);
+	var target = '.row-' + row + '.column-' + col;
+	$(target).addClass('solving');
+	$(target).val('');
+
+	var possibilities = [1,2,3,4,5,6,7,8,9];
+	var currentValues = [];
+
+	// Get all current values in this row
+	var rangeRow = '.row-' + row;
+	var rowFields = $(rangeRow);
+	$.each(rowFields,function(){
+		var $this = $(this);
+		if($this.val() !== ""){
+			currentValues.push($this.val());
+		}
+	});
+
+	// Get all current values in this column
+	var rangeCol = '.column-' + col;
+	var colFields = $(rangeCol);
+	$.each(colFields,function(){
+		var $this = $(this);
+		if($this.val() !== ""){
+			if(currentValues.indexOf($this.val()) < 0){
+				currentValues.push($this.val());
+			}
+		}
+	});
+
+	// Get all current values in this box
+	var rangeBox = '.box-' + box;
+	var boxFields = $(rangeBox);
+	$.each(boxFields,function(){
+		var $this = $(this);
+		if($this.val() !== ""){
+			if(currentValues.indexOf($this.val()) < 0){
+				currentValues.push($this.val());
+			}
+		}
+	});
+
+
+	// Run through current values and remove from possible 1-9
+	$.each(currentValues,function(k,v){
+		var index = possibilities.indexOf(parseInt(v));
+		if(index >= 0){
+			possibilities.splice(index,1);
+		}
+	});
+
+	console.log("Currently:");
+	console.log(currentValues);
+	console.log("Posibilities:");
+	console.log(possibilities);
+
+	if(possibilities.length == 1){
+		console.log("Solved!");
+		$(target).addClass('solved');
+		$(target).val(possibilities[0]);
+		$(target).parents('td').find('.overlay-matrix').text('').fadeOut(300);
+	} else {
+		if(forceRandom){
+			console.log("Attempting Answer!");
+			$(target).addClass('solved');
+			$(target).val(possibilities[0]);
+			$(target).parents('td').find('.overlay-matrix').text('').fadeOut(300);
+			forceRandom = false;
+		} else {
+			$(target).addClass('not-solved');
+			$(target).removeClass('solving');
+			$(target).val('');
+			$(target).parents('td').find('.overlay-matrix').text('').hide();
+		}
+	}
+}
+
+$(function(){
+	//populate();
+});
+</script>
+</head>
+
+<body>
+
+<div id="container">
+<h1>Suduko Solver</h1>
+<button onClick="populate();" class="btn btn-info">Populate</button>
+<button onClick="solveNext();" class="btn btn-primary">Solve Next</button>
+<button onClick="solveAll();" class="btn btn-success">Solve All</button>
+<a href="./index.html" class="btn btn-default">Reset</a>
+<table class="table table-bordered suduko-table">
+	<tr class="column-key">
+    	<td>A</td>
+        <td>B</td>
+        <td>C</td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td>D</td>
+        <td>E</td>
+        <td>F</td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td>G</td>
+        <td>H</td>
+        <td>I</td>
+  	</tr>
+	<tr>
+    	<td><input type="text" class="input-field column-a row-1 box-1" data-column="a" data-row="1" data-box="1"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-b row-1 box-1" data-column="b" data-row="1" data-box="1"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-c row-1 box-1" data-column="c" data-row="1" data-box="1"><div class="overlay-matrix"></div></td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td><input type="text" class="input-field column-d row-1 box-2" data-column="d" data-row="1" data-box="2"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-e row-1 box-2" data-column="e" data-row="1" data-box="2"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-f row-1 box-2" data-column="f" data-row="1" data-box="2"><div class="overlay-matrix"></div></td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td><input type="text" class="input-field column-g row-1 box-3" data-column="g" data-row="1" data-box="3"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-h row-1 box-3" data-column="h" data-row="1" data-box="3"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-i row-1 box-3" data-column="i" data-row="1" data-box="3"><div class="overlay-matrix"></div></td>
+  	</tr>
+    <tr>
+    	<td><input type="text" class="input-field column-a row-2 box-1" data-column="a" data-row="2" data-box="1"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-b row-2 box-1" data-column="b" data-row="2" data-box="1"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-c row-2 box-1" data-column="c" data-row="2" data-box="1"><div class="overlay-matrix"></div></td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td><input type="text" class="input-field column-d row-2 box-2" data-column="d" data-row="2" data-box="2"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-e row-2 box-2" data-column="e" data-row="2" data-box="2"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-f row-2 box-2" data-column="f" data-row="2" data-box="2"><div class="overlay-matrix"></div></td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td><input type="text" class="input-field column-g row-2 box-3" data-column="g" data-row="2" data-box="3"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-h row-2 box-3" data-column="h" data-row="2" data-box="3"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-i row-2 box-3" data-column="i" data-row="2" data-box="3"><div class="overlay-matrix"></div></td>
+  	</tr>
+    <tr>
+    	<td><input type="text" class="input-field column-a row-3 box-1" data-column="a" data-row="3" data-box="1"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-b row-3 box-1" data-column="b" data-row="3" data-box="1"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-c row-3 box-1" data-column="c" data-row="3" data-box="1"><div class="overlay-matrix"></div></td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td><input type="text" class="input-field column-d row-3 box-2" data-column="d" data-row="3" data-box="2"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-e row-3 box-2" data-column="e" data-row="3" data-box="2"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-f row-3 box-2" data-column="f" data-row="3" data-box="2"><div class="overlay-matrix"></div></td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td><input type="text" class="input-field column-g row-3 box-3" data-column="g" data-row="3" data-box="3"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-h row-3 box-3" data-column="h" data-row="3" data-box="3"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-i row-3 box-3" data-column="i" data-row="3" data-box="3"><div class="overlay-matrix"></div></td>
+  	</tr>
+    <tr>
+    	<td colspan="11" style="height: 2px; background:#DDD; padding:0;"></td>
+    </tr>
+    <tr>
+    	<td><input type="text" class="input-field column-a row-4 box-4" data-column="a" data-row="4" data-box="4"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-b row-4 box-4" data-column="b" data-row="4" data-box="4"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-c row-4 box-4" data-column="c" data-row="4" data-box="4"><div class="overlay-matrix"></div></td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td><input type="text" class="input-field column-d row-4 box-5" data-column="d" data-row="4" data-box="5"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-e row-4 box-5" data-column="e" data-row="4" data-box="5"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-f row-4 box-5" data-column="f" data-row="4" data-box="5"><div class="overlay-matrix"></div></td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td><input type="text" class="input-field column-g row-4 box-6" data-column="g" data-row="4" data-box="6"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-h row-4 box-6" data-column="h" data-row="4" data-box="6"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-i row-4 box-6" data-column="i" data-row="4" data-box="6"><div class="overlay-matrix"></div></td>
+  	</tr>
+    <tr>
+    	<td><input type="text" class="input-field column-a row-5 box-4" data-column="a" data-row="5" data-box="4"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-b row-5 box-4" data-column="b" data-row="5" data-box="4"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-c row-5 box-4" data-column="c" data-row="5" data-box="4"><div class="overlay-matrix"></div></td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td><input type="text" class="input-field column-d row-5 box-5" data-column="d" data-row="5" data-box="5"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-e row-5 box-5" data-column="e" data-row="5" data-box="5"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-f row-5 box-5" data-column="f" data-row="5" data-box="5"><div class="overlay-matrix"></div></td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td><input type="text" class="input-field column-g row-5 box-6" data-column="g" data-row="5" data-box="6"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-h row-5 box-6" data-column="h" data-row="5" data-box="6"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-i row-5 box-6" data-column="i" data-row="5" data-box="6"><div class="overlay-matrix"></div></td>
+  	</tr>
+    <tr>
+    	<td><input type="text" class="input-field column-a row-6 box-4" data-column="a" data-row="6" data-box="4"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-b row-6 box-4" data-column="b" data-row="6" data-box="4"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-c row-6 box-4" data-column="c" data-row="6" data-box="4"><div class="overlay-matrix"></div></td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td><input type="text" class="input-field column-d row-6 box-5" data-column="d" data-row="6" data-box="5"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-e row-6 box-5" data-column="e" data-row="6" data-box="5"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-f row-6 box-5" data-column="f" data-row="6" data-box="5"><div class="overlay-matrix"></div></td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td><input type="text" class="input-field column-g row-6 box-6" data-column="g" data-row="6" data-box="6"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-h row-6 box-6" data-column="h" data-row="6" data-box="6"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-i row-6 box-6" data-column="i" data-row="6" data-box="6"><div class="overlay-matrix"></div></td>
+  	</tr>
+    <tr>
+    	<td colspan="11" style="height: 2px; background:#DDD; padding:0;"></td>
+    </tr>
+    <tr>
+    	<td><input type="text" class="input-field column-a row-7 box-7" data-column="a" data-row="7" data-box="7"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-b row-7 box-7" data-column="b" data-row="7" data-box="7"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-c row-7 box-7" data-column="c" data-row="7" data-box="7"><div class="overlay-matrix"></div></td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td><input type="text" class="input-field column-d row-7 box-8" data-column="d" data-row="7" data-box="8"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-e row-7 box-8" data-column="e" data-row="7" data-box="8"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-f row-7 box-8" data-column="f" data-row="7" data-box="8"><div class="overlay-matrix"></div></td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td><input type="text" class="input-field column-g row-7 box-9" data-column="g" data-row="7" data-box="9"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-h row-7 box-9" data-column="h" data-row="7" data-box="9"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-i row-7 box-9" data-column="i" data-row="7" data-box="9"><div class="overlay-matrix"></div></td>
+  	</tr>
+    <tr>
+    	<td><input type="text" class="input-field column-a row-8 box-7" data-column="a" data-row="8" data-box="7"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-b row-8 box-7" data-column="b" data-row="8" data-box="7"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-c row-8 box-7" data-column="c" data-row="8" data-box="7"><div class="overlay-matrix"></div></td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td><input type="text" class="input-field column-d row-8 box-8" data-column="d" data-row="8" data-box="8"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-e row-8 box-8" data-column="e" data-row="8" data-box="8"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-f row-8 box-8" data-column="f" data-row="8" data-box="8"><div class="overlay-matrix"></div></td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td><input type="text" class="input-field column-g row-8 box-9" data-column="g" data-row="8" data-box="9"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-h row-8 box-9" data-column="h" data-row="8" data-box="9"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-i row-8 box-9" data-column="i" data-row="8" data-box="9"><div class="overlay-matrix"></div></td>
+  	</tr>
+    <tr>
+    	<td><input type="text" class="input-field column-a row-9 box-7" data-column="a" data-row="9" data-box="7"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-b row-9 box-7" data-column="b" data-row="9" data-box="7"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-c row-9 box-7" data-column="c" data-row="9" data-box="7"><div class="overlay-matrix"></div></td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td><input type="text" class="input-field column-d row-9 box-8" data-column="d" data-row="9" data-box="8"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-e row-9 box-8" data-column="e" data-row="9" data-box="8"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-f row-9 box-8" data-column="f" data-row="9" data-box="8"><div class="overlay-matrix"></div></td>
+        <td style="width: 2px; background:#DDD; padding:0;"></td>
+        <td><input type="text" class="input-field column-g row-9 box-9" data-column="g" data-row="9" data-box="9"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-h row-9 box-9" data-column="h" data-row="9" data-box="9"><div class="overlay-matrix"></div></td>
+        <td><input type="text" class="input-field column-i row-9 box-9" data-column="i" data-row="9" data-box="9"><div class="overlay-matrix"></div></td>
+  	</tr>
+	
+</table>
+</div>
+
+</body>
+</html>
