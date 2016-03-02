@@ -257,51 +257,71 @@
             }
         }
 
-        function generate(){
+        function generate(stopReRun){
             var rowLimit= 9;
             var boxLimit = 9;
-            var level = 8;
+            var level = 9;
 
             for(ib = 1; ib <= boxLimit; ib++){
                 var numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
                 var currentValues = [];
                 var boxes = $('.input-field.box-' + ib);
+                var currentBoxes = $('.input-field.box-' + ib);
                 for (i = 1; i <= level; i++) {
 
                     var currentValues = [];
                     var input = shuffle(boxes).splice(getRandomInt(0,boxes.length), 1);
-                    console.log(boxes);
                     var number = numbers[Math.floor(Math.random() * numbers.length)];
-                    var rowNumber = $(input).data("row");
-                    var rowFields = $('.row-' + rowNumber);
-                    $.each(rowFields,function(){
-                        var $this = $(this);
-                        if($this.val() !== ""){
-                            currentValues.push(parseInt($this.val()));
+
+
+                    var currentValues = [];
+                    var input = shuffle(boxes).splice(getRandomInt(0,boxes.length), 1);
+                    var number = numbers[Math.floor(Math.random() * numbers.length)];
+
+
+                    $.each(currentBoxes, function(){
+                        var input = $(this);
+                        if(input.val() !== ""){
+                            currentValues.push(parseInt(input.val()));
                         }
+
+
+                        var rowNumber = input.data("row");
+                        var rowFields = $('.row-' + rowNumber);
+                        $.each(rowFields,function(){
+                            var $this = $(this);
+                            if($this.val() !== ""){
+                                currentValues.push(parseInt($this.val()));
+                            }
+                        });
+
+                        var colNumber = input.data("column");
+                        var colFields = $('.column-' + colNumber);
+                        $.each(colFields,function(){
+                            var $this = $(this);
+                            if($this.val() !== ""){
+                                currentValues.push(parseInt($this.val()));
+                            }
+                        });
                     });
 
-                    var colNumber = $(input).data("column");
-                    var colFields = $('.row-' + colNumber);
-                    $.each(colFields,function(){
-                        var $this = $(this);
-                        if($this.val() !== ""){
-                            currentValues.push(parseInt($this.val()));
-                        }
-                    });
+
+
+
                     console.log("Trying to add: " + number);
                     console.log(currentValues);
                     var checkIndex = currentValues.indexOf(parseInt(number));
                     if(checkIndex < 0) {
                         var index = numbers.indexOf(parseInt(number));
-                        if (index >= 0) {
-                            numbers.splice(index, 1);
+                            //numbers.splice(index, 1);
                             $(input).val(number);
-                        }
-
                     }
                 }
 
+            }
+
+            if(stopReRun <= 10) {
+                generate(stopReRun + 1);
             }
             /*
             for(ir = 1; ir <= rows; ir++) {
@@ -346,7 +366,8 @@
         }
 
         $(function(){
-            generate();
+            //generate(1);
+            populate();
         });
     </script>
 </head>
