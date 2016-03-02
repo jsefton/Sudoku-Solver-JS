@@ -257,8 +257,96 @@
             }
         }
 
+        function generate(){
+            var rowLimit= 9;
+            var boxLimit = 9;
+            var level = 8;
+
+            for(ib = 1; ib <= boxLimit; ib++){
+                var numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+                var currentValues = [];
+                var boxes = $('.input-field.box-' + ib);
+                for (i = 1; i <= level; i++) {
+
+                    var currentValues = [];
+                    var input = shuffle(boxes).splice(getRandomInt(0,boxes.length), 1);
+                    console.log(boxes);
+                    var number = numbers[Math.floor(Math.random() * numbers.length)];
+                    var rowNumber = $(input).data("row");
+                    var rowFields = $('.row-' + rowNumber);
+                    $.each(rowFields,function(){
+                        var $this = $(this);
+                        if($this.val() !== ""){
+                            currentValues.push(parseInt($this.val()));
+                        }
+                    });
+
+                    var colNumber = $(input).data("column");
+                    var colFields = $('.row-' + colNumber);
+                    $.each(colFields,function(){
+                        var $this = $(this);
+                        if($this.val() !== ""){
+                            currentValues.push(parseInt($this.val()));
+                        }
+                    });
+                    console.log("Trying to add: " + number);
+                    console.log(currentValues);
+                    var checkIndex = currentValues.indexOf(parseInt(number));
+                    if(checkIndex < 0) {
+                        var index = numbers.indexOf(parseInt(number));
+                        if (index >= 0) {
+                            numbers.splice(index, 1);
+                            $(input).val(number);
+                        }
+
+                    }
+                }
+
+            }
+            /*
+            for(ir = 1; ir <= rows; ir++) {
+                var fields = $('.input-field.row-' + ir);
+                var numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+
+                for (i = 0; i <= level; i++) {
+                    var input = shuffle(fields).splice(i, 1);
+                    var number = numbers[Math.floor(Math.random() * numbers.length)];
+                    var index = numbers.indexOf(parseInt(number));
+                    if (index >= 0) {
+                        numbers.splice(index, 1);
+                    }
+                    $(input).val(number);
+                    console.log(input);
+                }
+            }*/
+
+        }
+
+        function getRandomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function shuffle(array) {
+            var m = array.length, t, i;
+
+            // While there remain elements to shuffle…
+            while (m) {
+
+                // Pick a remaining element…
+                i = Math.floor(Math.random() * m--);
+
+                // And swap it with the current element.
+                t = array[m];
+                array[m] = array[i];
+                array[i] = t;
+            }
+
+            return array;
+        }
+
         $(function(){
-            populate();
+            generate();
         });
     </script>
 </head>
