@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Sudoko Solver</title>
+    <title>Sudoku Solver</title>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
 
@@ -92,11 +92,15 @@
     <script type="text/javascript" src="./example.js"></script>
     <script>
         var required = [1,2,3,4,5,6,7,8,9];
-        var speed = 50;
-        var matrixMode = true;
+        var speed = 1;
+        var matrixMode = false;
         var autoRetry = false;
         var forceRandom = false;
         var lockPrevious = false;
+		var attemptAlt = false;
+		var totalSolvedInLoop = 0;
+		var currentValues = [];
+		var complete = false;
 
         function solveAll(){
             autoRetry = true;
@@ -107,8 +111,6 @@
             var found = false;
 
             var fields = $('.input-field');
-
-
 
             var time = 0;
 
@@ -121,6 +123,7 @@
                 }
             });
 
+			totalSolvedInLoop = 0;
 
             $.each(fields,function(){
                 var $this = $(this);
@@ -131,6 +134,7 @@
                     var box = $this.data("box");
 
                     setTimeout(function(){
+						
                         checkField(col,row,box);
                     }, time);
                     time += speed;
@@ -159,11 +163,28 @@
             setTimeout(function(){
                 fields.removeClass('not-solved');
                 clearInterval(matrix);
-                if(autoRetry === true){
-                    if(totalChecking > 0){
-                        solveNext();
-                    }
-                }
+				if(totalSolvedInLoop == 0){
+					//alert("Cannot solve any more fields!");	
+					
+					attemptAlt = true;
+					if(autoRetry === true){
+						autoRetry = false;
+						solveNext();
+						
+					} else {
+						if(complete === false){
+							//alert("Unable to solve this puzzle. Starting again...");	
+							loadSaved();
+							solveAll();
+						}
+					}
+				} else {
+					if(autoRetry === true){
+						if(totalChecking > 0){
+							solveNext();
+						}
+					}
+				}
             }, (speed * totalChecking));
 
 
@@ -174,6 +195,7 @@
             if(totalChecking == 0){
                 alert("Complete");
                 autoRetry = false;
+				complete = true;
             }
 
 
@@ -186,20 +208,158 @@
             $(target).val('');
 
             var possibilities = [1,2,3,4,5,6,7,8,9];
+			var otherPossibilities = [1,2,3,4,5,6,7,8,9];
             var currentValues = [];
 
             // Get all current values in this row
-            var rangeRow = '.row-' + row;
-            var rowFields = $(rangeRow);
-            $.each(rowFields,function(){
-                var $this = $(this);
-                if($this.val() !== ""){
-                    currentValues.push($this.val());
-                }
-            });
+            currenValues = checkRow(row, currentValues);
 
             // Get all current values in this column
-            var rangeCol = '.column-' + col;
+            currentValues = checkColumn(col, currentValues);
+
+            // Get all current values in this box
+            currentValues = checkBox(box, currentValues);
+			
+
+            // Run through current values and remove from possible 1-9
+            $.each(currentValues,function(k,v){
+                var index = possibilities.indexOf(parseInt(v));
+                if(index >= 0){
+                    possibilities.splice(index,1);
+					otherPossibilities.splice(index,1);
+                }
+            });
+			
+			var others = [];
+			$.each($('.input-field.box-' + box + ':not(.row-' + row + '.column-' + col + ')'),function(){
+				if($(this).val() === ""){
+					otherPossibilities = crossReference($(this),otherPossibilities); 
+				}
+			});
+			
+			console.log("Others:");
+			console.log(otherPossibilities);
+
+            console.log("Currently:");
+            console.log(currentValues);
+            console.log("Posibilities:");
+            console.log(possibilities);
+
+            if(possibilities.length == 1){
+				totalSolvedInLoop++;
+                console.log("Solved!");
+                $(target).addClass('solved');
+                $(target).val(possibilities[0]);
+                $(target).parents('td').find('.overlay-matrix').text('').fadeOut(300);
+            } else if(otherPossibilities.length == 1){
+				totalSolvedInLoop++;
+                console.log("Solved!");
+                $(target).addClass('solved');
+                $(target).val(otherPossibilities[0]);
+                $(target).parents('td').find('.overlay-matrix').text('').fadeOut(300);
+            } else {
+				if(possibilities.length == 2 && attemptAlt === true){
+					totalSolvedInLoop++;
+					attemptAlt = false;
+                	console.log("Solved!");
+					var randomNumberTry = possibilities[Math.floor(Math.random() * possibilities.length)];
+                	$(target).addClass('solved');
+                	$(target).val(randomNumberTry);
+                	$(target).parents('td').find('.overlay-matrix').text('').fadeOut(300);
+					autoRetry = true;
+					
+				} else if(otherPossibilities.length == 2 && attemptAlt === true){
+					totalSolvedInLoop++;
+					attemptAlt = false;
+                	console.log("Solved!");
+					var randomNumberTry = otherPossibilities[Math.floor(Math.random() * otherPossibilities.length)];
+                	$(target).addClass('solved');
+                	$(target).val(randomNumberTry);
+                	$(target).parents('td').find('.overlay-matrix').text('').fadeOut(300);
+					autoRetry = true;
+					
+				} else {
+					if(possibilities.length == 3 && attemptAlt === true){
+						totalSolvedInLoop++;
+						attemptAlt = false;
+						console.log("Solved!");
+						var randomNumberTry = possibilities[Math.floor(Math.random() * possibilities.length)];
+						$(target).addClass('solved');
+						$(target).val(randomNumberTry);
+						$(target).parents('td').find('.overlay-matrix').text('').fadeOut(300);
+						autoRetry = true;
+						
+					} else {
+						if(forceRandom){
+							console.log("Attempting Answer!");
+							$(target).addClass('solved');
+							$(target).val(possibilities[0]);
+							$(target).parents('td').find('.overlay-matrix').text('').fadeOut(300);
+							forceRandom = false;
+						} else {
+							$(target).addClass('not-solved');
+							$(target).removeClass('solving');
+							$(target).val('');
+							//$(target).parents('td').find('.overlay-matrix').text('').hide();
+						}
+					}
+				}
+            }
+        }
+		
+		function crossReference(input,otherPossibilities){
+			var $this = input;
+			var col = $this.data("column");
+            var row = $this.data("row");
+          	var box = $this.data("box");
+			//console.log("Extra Checking: " + col + row + " in box " + box);
+			var ePossibilities = [1,2,3,4,5,6,7,8,9];
+			var eCurrenValues = [];
+			 
+			// Get all current values in this row
+            eCurrenValues = checkRow(row, eCurrenValues);
+
+            // Get all current values in this column
+            eCurrenValues = checkColumn(col, eCurrenValues);
+
+            // Get all current values in this box
+            eCurrenValues = checkBox(box, eCurrenValues);
+			
+			$.each(eCurrenValues,function(k,v){
+                var index = ePossibilities.indexOf(parseInt(v));
+                if(index >= 0){
+                    ePossibilities.splice(index,1);
+                }
+            });
+			
+			/*console.log("Other before clean");
+			console.log(otherPossibilities);*/
+			
+			$.each(ePossibilities,function(k,v){
+                var index = otherPossibilities.indexOf(parseInt(v));
+                if(index >= 0){
+                    otherPossibilities.splice(index,1);
+                }
+            });
+			
+			return otherPossibilities;
+		}
+		
+		function checkRow(row, currentValues){
+			var rangeRow = '.row-' + row;
+			var rowFields = $(rangeRow);
+			$.each(rowFields,function(){
+				var $this = $(this);
+				if($this.val() !== ""){
+					currentValues.push($this.val());
+				}
+			});
+			
+			return currentValues;
+		}
+		
+		function checkColumn(col, currentValues){
+			var rangeCol = '.column-' + col;
             var colFields = $(rangeCol);
             $.each(colFields,function(){
                 var $this = $(this);
@@ -209,9 +369,12 @@
                     }
                 }
             });
-
-            // Get all current values in this box
-            var rangeBox = '.box-' + box;
+			
+			return currentValues;	
+		}
+		
+		function checkBox(box, currentValues){
+			var rangeBox = '.box-' + box;
             var boxFields = $(rangeBox);
             $.each(boxFields,function(){
                 var $this = $(this);
@@ -221,41 +384,9 @@
                     }
                 }
             });
-
-
-            // Run through current values and remove from possible 1-9
-            $.each(currentValues,function(k,v){
-                var index = possibilities.indexOf(parseInt(v));
-                if(index >= 0){
-                    possibilities.splice(index,1);
-                }
-            });
-
-            console.log("Currently:");
-            console.log(currentValues);
-            console.log("Posibilities:");
-            console.log(possibilities);
-
-            if(possibilities.length == 1){
-                console.log("Solved!");
-                $(target).addClass('solved');
-                $(target).val(possibilities[0]);
-                $(target).parents('td').find('.overlay-matrix').text('').fadeOut(300);
-            } else {
-                if(forceRandom){
-                    console.log("Attempting Answer!");
-                    $(target).addClass('solved');
-                    $(target).val(possibilities[0]);
-                    $(target).parents('td').find('.overlay-matrix').text('').fadeOut(300);
-                    forceRandom = false;
-                } else {
-                    $(target).addClass('not-solved');
-                    $(target).removeClass('solving');
-                    $(target).val('');
-                    $(target).parents('td').find('.overlay-matrix').text('').hide();
-                }
-            }
-        }
+			
+			return currentValues;	
+		}
 
         function generate(stopReRun){
             var rowLimit= 9;
@@ -319,6 +450,8 @@
                 }
 
             }
+			
+			
 
             if(stopReRun <= 10) {
                 generate(stopReRun + 1);
@@ -364,7 +497,41 @@
 
             return array;
         }
+		
+		function savePuzzle(){
+			var keys = [];
+			
+			$.each($('.input-field'),function(){
+				var $this = $(this);
+				if($this.val() !== ""){
+					var column = $this.data("column");
+					var row = $this.data("row");
+					var value = $this.val();
+					
+					var item = {
+						col : column,
+						row: row,
+						val: value
+					};
+					
+					keys.push(item);
+				}
+			});
+			
+			localStorage.setItem("puzzle", JSON.stringify(keys));
 
+			
+		}
+		
+		function loadSaved(){
+			var keys = JSON.parse(localStorage.getItem("puzzle"));
+			$('.input-field').val('');
+			$.each(keys,function(key,value){
+				var target = ".column-" + value.col + ".row-" + value.row;
+				$(target).val(value.val).prop('disabled',true).addClass('pre-number');
+			});
+		}
+	
         $(function(){
             //generate(1);
             //populate();
@@ -375,8 +542,9 @@
 <body>
 
 <div id="container">
-    <h1>Sudoko Solver</h1>
-    <button onClick="populate();" class="btn btn-info">Populate</button>
+    <h1>Sudoku Solver</h1>
+    <button onClick="loadSaved();" class="btn btn-info">Load Puzzle</button>
+    <button onClick="savePuzzle();" class="btn btn-info">Save Puzzle</button>
     <button onClick="solveNext();" class="btn btn-primary">Solve Next</button>
     <button onClick="solveAll();" class="btn btn-success">Solve All</button>
     <a href="./index.html" class="btn btn-default">Reset</a>
